@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HƯƠNG SẮC ĐẤT PHÙ SA - Hệ Thống Nông Sản & Quản Trị Cung Ứng</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="app" v-cloak>
+
+    <div class="topbar py-2 px-3 d-none d-md-block">
+      <div class="container d-flex justify-content-between align-items-center small">
+        <div>
+          <span class="me-3"><i class="fa-solid fa-leaf me-1"></i>Chuỗi cung ứng nông sản sạch VietGAP Đồng Bằng Sông Cửu Long</span>
+          <span><i class="fa-solid fa-truck-fast me-1"></i>Freeship đơn từ 150K — Tặng kèm Rau gia vị cho đơn từ 300K!</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span v-if="currentUser">
+            Xin chào, <strong>{{ currentUser.name }}</strong>
+            <span class="badge ms-1" :class="isAdmin ? 'bg-warning text-dark' : 'bg-success'">
+              {{ isAdmin ? 'Chế độ Quản trị viên (Chỉ quản lý)' : 'Khách hàng' }}
+            </span>
+          </span>
+          <span v-else>Hotline đặt sỉ/lẻ: <strong>0348 914 077</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+      <div class="container">
+        <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none" href="#" @click.prevent="viewMode = 'store'">
+          <svg width="45" height="45" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="#1B5E20" stroke="#81C784" stroke-width="3"/>
+            <path d="M50 22C50 22 30 35 30 55C30 68 40 78 50 78C60 78 70 68 70 55C70 35 50 22 50 22Z" fill="#66BB6A"/>
+            <path d="M50 35V65" stroke="#E8F5E9" stroke-width="4" stroke-linecap="round"/>
+            <path d="M50 45L40 52" stroke="#E8F5E9" stroke-width="3" stroke-linecap="round"/>
+            <path d="M50 55L60 60" stroke="#E8F5E9" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="d-flex flex-column">
+            <span class="fw-bold fs-5 lh-1 brand-title">HƯƠNG SẮC ĐẤT PHÙ SA</span>
+            <small class="fw-bold brand-subtitle">NÔNG SẢN XANH - SẠCH</small>
+          </div>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-1 mt-3 mt-lg-0">
+            <template v-if="viewMode === 'store'">
+              <li class="nav-item"><a class="nav-link fw-semibold active" href="#">Trang chủ</a></li>
+              <li class="nav-item"><a class="nav-link fw-semibold" href="#gioi-thieu">Giới thiệu</a></li>
+              <li class="nav-item"><a class="nav-link fw-semibold text-danger" href="#flash-sale"><i class="fa-solid fa-bolt me-1"></i>Săn Sale</a></li>
+              <li class="nav-item"><a class="nav-link fw-semibold text-success" href="#di-cho-ngan-sach"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Đi chợ hộ</a></li>
+              <li class="nav-item"><a class="nav-link fw-semibold" href="#danh-muc-nong-san">Sản phẩm</a></li>
+              <li class="nav-item"><a class="nav-link fw-semibold" href="#lien-he">Liên hệ</a></li>
+            </template>
+
+            <li class="nav-item ms-lg-2" v-if="isAdmin">
+              <button v-if="viewMode === 'store'" class="btn btn-warning btn-sm fw-bold text-dark px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm" @click="viewMode = 'admin'">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Quản trị Hệ thống</span>
+                <span v-if="lowStockCount + pendingOrdersCount + unreadMessagesCount > 0" class="badge rounded-pill bg-danger text-white">
+                  {{ lowStockCount + pendingOrdersCount + unreadMessagesCount }}
+                </span>
+              </button>
+              <button v-else class="btn btn-outline-success btn-sm fw-bold px-3 py-2 d-inline-flex align-items-center gap-2" @click="viewMode = 'store'">
+                <i class="fa-solid fa-store"></i>
+                <span>Xem Giao diện Cửa hàng</span>
+              </button>
+            </li>
+
+            <li class="nav-item ms-lg-2 mt-2 mt-lg-0" v-if="viewMode === 'store' && !isAdmin">
+              <button class="btn btn-cart-nav d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#cartModal">
+                <i class="fa-solid fa-basket-shopping"></i>
+                <span>Giỏ hàng</span>
+                <span class="cart-count-pill">{{ totalCartItems }}</span>
+              </button>
+            </li>
+
+            <li class="nav-item ms-lg-2 mt-2 mt-lg-0" v-if="!currentUser">
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-success fw-semibold" data-bs-toggle="modal" data-bs-target="#authModal" @click="openAuthModal('register')">
+                  <i class="fa-solid fa-user-plus me-1"></i> Đăng ký
+                </button>
+                <button class="btn btn-success fw-semibold" data-bs-toggle="modal" data-bs-target="#authModal" @click="openAuthModal('login')">
+                  <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
+                </button>
+              </div>
+            </li>
+
+            <li class="nav-item dropdown ms-lg-2 mt-2 mt-lg-0" v-else>
+              <a class="nav-link dropdown-toggle fw-bold text-success bg-success bg-opacity-10 px-3 py-2 rounded-3 d-inline-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-circle-user"></i>
+                <span>{{ currentUser.name }}</span>
+                <span v-if="isAdmin" class="badge bg-danger ms-1">Admin</span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2" style="min-width: 245px;">
+                <li class="px-3 py-2 border-bottom mb-1 bg-light rounded-3">
+                  <div class="fw-bold text-dark">{{ currentUser.name }}</div>
+                  <small class="text-muted"><i class="fa-solid fa-at me-1"></i>{{ currentUser.username }} | {{ currentUser.phone }}</small>
+                </li>
+                <li v-if="isAdmin">
+                  <a class="dropdown-item rounded-2 fw-semibold text-warning-emphasis py-2" href="#" @click.prevent="viewMode = 'admin'">
+                    <i class="fa-solid fa-gauge-high me-2"></i>Bảng điều khiển Quản trị
+                  </a>
+                </li>
+                <li v-if="isAdmin">
+                  <a class="dropdown-item rounded-2 py-2 d-flex justify-content-between align-items-center" href="#" @click.prevent="viewMode = 'admin'; adminTab = 'messages'">
+                    <span><i class="fa-solid fa-envelope-open-text me-2 text-success"></i>Hộp thư tư vấn</span>
+                    <span v-if="unreadMessagesCount > 0" class="badge bg-danger rounded-pill">{{ unreadMessagesCount }} mới</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item rounded-2 py-2" href="#" data-bs-toggle="modal" data-bs-target="#profileModal" @click="openProfileModal">
+                    <i class="fa-solid fa-user-gear me-2 text-primary"></i>Hồ sơ cá nhân & Mật khẩu
+                  </a>
+                </li>
+                <li v-if="!isAdmin">
+                  <a class="dropdown-item rounded-2 py-2 d-flex justify-content-between align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#myOrdersModal">
+                    <span><i class="fa-solid fa-box-archive me-2 text-success"></i>Đơn hàng & Mua lại</span>
+                    <span class="badge bg-success rounded-pill">{{ userOrders.length }}</span>
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                  <a class="dropdown-item rounded-2 text-danger fw-semibold py-2" href="#" @click.prevent="handleLogout">
+                    <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất tài khoản
+                  </a>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div v-if="viewMode === 'store'">
+
+      <div v-if="isAdmin" class="container mt-3">
+        <div class="alert alert-warning border-warning d-flex flex-wrap justify-content-between align-items-center py-2 px-3 rounded-4 shadow-sm mb-0 gap-2">
+          <div class="small fw-semibold text-dark">
+            <i class="fa-solid fa-user-shield me-2"></i>Bạn đang đăng nhập với quyền <strong>Quản trị viên (Admin)</strong>. Chức năng mua hàng đã được khóa — bạn có thể bấm trực tiếp vào từng sản phẩm để chỉnh sửa hoặc nhập kho!
+          </div>
+          <button class="btn btn-dark btn-sm fw-bold" @click="viewMode = 'admin'">
+            <i class="fa-solid fa-sliders me-1"></i>Mở Trang Quản Trị
+          </button>
+        </div>
+      </div>
+
+      <div class="container my-4">
+        <div class="hero-banner p-4 p-md-5 rounded-4 text-center text-md-start shadow-sm">
+          <div class="row align-items-center">
+            <div class="col-md-7">
+              <span class="badge bg-success mb-2 px-3 py-2 fs-6 shadow-sm">
+                <i class="fa-solid fa-qrcode me-1"></i>Nông Sản Sạch Có Mã QR Truy Xuất Nguồn Gốc
+              </span>
+              <h1 class="fw-bold text-success display-6 mb-3 hero-title">TỪ VƯỜN MIỀN TÂY ĐẾN BÀN ĂN GIA ĐÌNH BẠN</h1>
+              <p class="text-secondary fs-6 mb-4">
+                Hệ thống phân phối trực tiếp rau củ, trái cây, nấm tươi và đặc sản từ các Hợp tác xã uy tín tại Trà Vinh, Vĩnh Long, Đà Lạt. Tồn kho cập nhật theo thời gian thực - Tươi ngon mỗi ngày.
+              </p>
+              <div class="input-group mb-2 shadow-sm" style="max-width: 520px;">
+                <span class="input-group-text bg-white border-end-0 text-success">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" v-model="searchKeyword" class="form-control border-start-0 py-2" placeholder="Tìm tên nông sản, vùng trồng (Trà Vinh, Đà Lạt), nhà vườn...">
+                <button v-if="searchKeyword" class="btn btn-outline-secondary" type="button" @click="searchKeyword = ''">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-2 small text-muted justify-content-center justify-content-md-start">
+                <span>Từ khóa nổi bật:</span>
+                <a href="#danh-muc-nong-san" class="tag-chip" @click="searchKeyword = 'Trà Vinh'">#Trà Vinh</a>
+                <a href="#danh-muc-nong-san" class="tag-chip" @click="searchKeyword = 'Vĩnh Long'">#Vĩnh Long</a>
+                <a href="#danh-muc-nong-san" class="tag-chip" @click="searchKeyword = 'VietGAP'">#VietGAP</a>
+                <a href="#danh-muc-nong-san" class="tag-chip" @click="searchKeyword = 'Đặc sản'">#Đặc sản</a>
+              </div>
+            </div>
+            <div class="col-md-5 text-center mt-4 mt-md-0">
+              <img src="https://images.unsplash.com/photo-1610348725531-843dff563e2c?w=600&q=80" alt="Nông sản tươi sạch" class="img-fluid rounded-4 shadow hero-img">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container my-5" id="gioi-thieu">
+        <div class="section-card p-4 p-md-5">
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-6">
+              <div class="position-relative">
+                <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80" alt="Giới thiệu Hương Sắc Đất Phù Sa" class="img-fluid rounded-4 shadow-sm w-100" style="max-height: 360px; object-fit: cover;">
+                <div class="position-absolute bottom-0 end-0 bg-success text-white p-3 m-3 rounded-4 shadow d-none d-sm-block">
+                  <div class="fw-bold fs-4 lh-1">100%</div>
+                  <small>Nông sản VietGAP</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 mb-2">
+                <i class="fa-solid fa-seedling me-1"></i>GIỚI THIỆU VỀ CHÚNG TÔI
+              </span>
+              <h3 class="fw-bold text-success mb-3">HƯƠNG SẮC ĐẤT PHÙ SA – KẾT NỐI NÔNG SẢN SẠCH MIỀN TÂY</h3>
+              <p class="text-secondary mb-3">
+                <strong>Hương Sắc Đất Phù Sa</strong> là hệ thống thương mại điện tử kết hợp quản lý chuỗi cung ứng nông sản trực tuyến, ra đời với sứ mệnh trở thành cầu nối trực tiếp giữa các Hợp tác xã, nhà vườn uy tín tại vùng Đồng bằng sông Cửu Long (Trà Vinh, Vĩnh Long, Bến Tre...) và Đà Lạt đến tận bàn ăn của mọi gia đình.
+              </p>
+              <p class="text-secondary mb-4">
+                Mỗi sản phẩm trên hệ thống đều được cấp <strong>Hộ chiếu Nông sản QR</strong> minh bạch lô thu hoạch, tích hợp <strong>Trợ lý Đi chợ theo ngân sách</strong>, <strong>Cẩm nang sơ chế nhà bếp</strong> và chương trình <strong>Flash Sale Giờ Vàng tự động</strong> giúp tối ưu vòng quay thực phẩm tươi sạch trong ngày.
+              </p>
+              <div class="row g-3 mb-4">
+                <div class="col-sm-6">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-success fs-5"></i>
+                    <span class="fw-semibold small text-dark">Truy xuất nguồn gốc bằng QR</span>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-primary fs-5"></i>
+                    <span class="fw-semibold small text-dark">Trợ lý đi chợ theo ngân sách</span>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-kitchen-set text-warning fs-5"></i>
+                    <span class="fw-semibold small text-dark">Mẹo sơ chế & Gợi ý món ngon</span>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-gift text-danger fs-5"></i>
+                    <span class="fw-semibold small text-dark">Freeship 150K & Tặng quà 300K</span>
+                  </div>
+                </div>
+              </div>
+              <a href="#danh-muc-nong-san" class="btn btn-success px-4 py-2 fw-bold">
+                <i class="fa-solid fa-basket-shopping me-2"></i>Khám phá 50+ nông sản ngay
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container my-5" id="flash-sale">
+        <div class="flash-sale-box p-4 rounded-4 shadow-sm position-relative overflow-hidden">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-2">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <span class="badge bg-danger fs-6 px-3 py-2 shadow-sm pulse-badge">
+                <i class="fa-solid fa-bolt-lightning me-1"></i>FLASH SALE NÔNG SẢN TƯƠI - GIẢM {{ flashSaleDiscount }}%
+              </span>
+              <span class="text-dark fw-semibold small">
+                <i class="fa-regular fa-clock text-danger me-1"></i>Tự động kết thúc & đổi sang 4 mặt hàng mới sau:
+              </span>
+              <div class="d-flex align-items-center gap-1">
+                <span class="timer-box">{{ formattedCountdown.hours }}</span>
+                <span class="fw-bold text-danger">:</span>
+                <span class="timer-box">{{ formattedCountdown.minutes }}</span>
+                <span class="fw-bold text-danger">:</span>
+                <span class="timer-box">{{ formattedCountdown.seconds }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-white text-danger border border-danger px-3 py-2 shadow-sm">
+                <i class="fa-solid fa-rotate me-1 fa-spin"></i>Phiên tự động #{{ flashSaleRound }} ({{ flashSaleRemaining }}s)
+              </span>
+            </div>
+          </div>
+
+          <div class="progress mb-4 bg-white" style="height: 10px; border-radius: 10px;">
+            <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" style="transition: width 1s linear;" :style="{ width: flashSaleTimePercent + '%' }"></div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-sm-6 col-lg-3" v-for="item in flashSaleProducts" :key="'sale-' + item.id">
+              <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden product-card">
+                <div class="position-relative cursor-pointer" @click="openProductDetail(item)">
+                  <img :src="item.image" class="card-img-top product-img" :alt="item.name" onerror="this.src='https://via.placeholder.com/400x300?text=Nong+San'">
+                  <span class="position-absolute top-0 start-0 bg-danger text-white badge m-2 px-2 py-1 shadow">
+                    -{{ flashSaleDiscount }}% GIỜ VÀNG
+                  </span>
+                  <span class="position-absolute top-0 end-0 bg-success text-white badge m-2 px-2 py-1 shadow-sm">
+                    {{ item.origin }}
+                  </span>
+                </div>
+                <div class="card-body d-flex flex-column p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-warning small fw-bold">
+                      <i class="fa-solid fa-star"></i> {{ getAverageRating(item.id) }}
+                      <span class="text-muted fw-normal">({{ getReviewCount(item.id) }})</span>
+                    </span>
+                    <small class="text-success fw-semibold">Kho: {{ item.stock }} {{ item.unit }}</small>
+                  </div>
+                  <h6 class="card-title fw-bold text-dark mb-1 cursor-pointer" @click="openProductDetail(item)">{{ item.name }}</h6>
+                  <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
+                    <div>
+                      <div class="text-danger fw-bold fs-5 lh-1">{{ formatPrice(getEffectivePrice(item)) }}</div>
+                      <small class="text-muted text-decoration-line-through">{{ formatPrice(item.price) }}</small>
+                    </div>
+                    <button v-if="isAdmin" class="btn btn-warning btn-sm fw-bold px-2" @click="openSupplyModal(item)">
+                      <i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho
+                    </button>
+                    <button v-else class="btn btn-danger btn-sm fw-bold px-3" :disabled="item.stock <= 0" @click="addToCart(item, 1)">
+                      <i class="fa-solid fa-cart-plus me-1"></i>Săn ngay
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container my-5" id="di-cho-ngan-sach">
+        <div class="budget-planner-box p-4 p-md-5 rounded-4 shadow-sm">
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-5">
+              <span class="badge bg-success px-3 py-2 mb-2">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>TRỢ LÝ ĐI CHỢ THÔNG MINH
+              </span>
+              <h3 class="fw-bold text-success mb-2">ĐI CHỢ THEO NGÂN SÁCH CỦA BẠN</h3>
+              <p class="text-secondary small mb-3">
+                Bạn bận rộn hoặc phân vân không biết phối hợp Rau củ + Nấm tươi + Trái cây sao cho vừa vặn túi tiền? Chọn ngay mức ngân sách dưới đây, hệ thống sẽ tự động lên combo cân bằng dinh dưỡng!
+              </p>
+
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <button v-for="b in budgetOptions" :key="b.limit" type="button" class="btn fw-bold flex-grow-1 py-2" :class="selectedBudget === b.limit ? 'btn-success shadow-sm' : 'btn-outline-success bg-white'" @click="selectBudgetTier(b.limit)">
+                  <div>{{ formatPrice(b.limit) }}</div>
+                  <small class="fw-normal d-block" style="font-size: 11px;">{{ b.label }}</small>
+                </button>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-success btn-sm bg-white fw-semibold" @click="shuffleBudgetCombo">
+                  <i class="fa-solid fa-shuffle me-1"></i>Đổi gợi ý mâm cơm khác
+                </button>
+                <button v-if="!isAdmin" class="btn btn-success btn-sm fw-bold flex-grow-1" @click="addBudgetComboToCart">
+                  <i class="fa-solid fa-cart-plus me-1"></i>Thêm trọn bộ vào giỏ ({{ formatPrice(budgetComboTotal) }})
+                </button>
+                <span v-else class="badge bg-warning text-dark d-flex align-items-center px-3">
+                  Chế độ Admin (Chỉ xem)
+                </span>
+              </div>
+            </div>
+
+            <div class="col-lg-7">
+              <div class="bg-white p-3 p-md-4 rounded-4 shadow-sm border">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                  <div>
+                    <span class="fw-bold text-dark"><i class="fa-solid fa-utensils text-success me-2"></i>Gợi ý Combo Đi Chợ ({{ budgetCombo.length }} món)</span>
+                    <small class="text-muted d-block">Đầy đủ Rau xanh, Nấm/Thực phẩm & Trái cây tráng miệng</small>
+                  </div>
+                  <div class="text-end">
+                    <span class="small text-muted d-block">Tổng cộng gói:</span>
+                    <span class="fw-bold text-danger fs-5">{{ formatPrice(budgetComboTotal) }}</span>
+                  </div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-sm-6" v-for="item in budgetCombo" :key="'combo-' + item.id">
+                    <div class="d-flex align-items-center gap-2 p-2 rounded-3 border bg-light">
+                      <img :src="item.image" class="rounded-2" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/52'">
+                      <div class="overflow-hidden flex-grow-1">
+                        <div class="fw-bold text-dark small text-truncate cursor-pointer" @click="openProductDetail(item)">{{ item.name }}</div>
+                        <small class="text-muted d-block">{{ item.category }} • 1 {{ item.unit }}</small>
+                        <span class="text-danger fw-bold small">{{ formatPrice(getEffectivePrice(item)) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center small text-success fw-semibold">
+                  <span><i class="fa-solid fa-piggy-bank me-1"></i>So với ngân sách {{ formatPrice(selectedBudget) }}: Dư {{ formatPrice(Math.max(0, selectedBudget - budgetComboTotal)) }}</span>
+                  <span v-if="budgetComboTotal >= 150000" class="badge bg-success"><i class="fa-solid fa-truck-fast me-1"></i>Đủ điều kiện Freeship!</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container my-5" id="danh-muc-nong-san">
+        <div class="section-card p-3 p-md-4 mb-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+              <h4 class="fw-bold text-success m-0">
+                <i class="fa-solid fa-basket-shopping me-2"></i>KHÁM PHÁ NÔNG SẢN TƯƠI SẠCH
+              </h4>
+              <small class="text-muted">Đang hiển thị <strong>{{ filteredProducts.length }}</strong> mặt hàng nông sản</small>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="btn-group flex-wrap" role="group">
+                <button v-for="cat in categories" :key="cat" type="button" class="btn btn-outline-success btn-sm fw-semibold" :class="{ active: selectedCategory === cat }" @click="selectedCategory = cat">
+                  {{ cat }}
+                </button>
+              </div>
+
+              <select v-model="priceFilter" class="form-select form-select-sm border-success text-success fw-semibold" style="width: auto;">
+                <option value="all">Mọi mức giá</option>
+                <option value="under30">Dưới 30.000đ</option>
+                <option value="30to60">Từ 30.000đ - 60.000đ</option>
+                <option value="over60">Trên 60.000đ</option>
+              </select>
+
+              <select v-model="sortBy" class="form-select form-select-sm border-success text-success fw-semibold" style="width: auto;">
+                <option value="default">Sắp xếp: Mặc định</option>
+                <option value="price-asc">Giá: Thấp đến Cao</option>
+                <option value="price-desc">Giá: Cao đến Thấp</option>
+                <option value="stock-desc">Lượng tồn: Nhiều nhất</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="filteredProducts.length === 0" class="text-center text-muted py-5 section-card">
+          <i class="fa-solid fa-seedling fs-1 mb-3 d-block text-secondary opacity-50"></i>
+          <h5>Không tìm thấy nông sản nào khớp với bộ lọc</h5>
+          <p class="small">Hãy thử đổi từ khóa hoặc đặt lại bộ lọc danh mục và giá.</p>
+          <button class="btn btn-success btn-sm px-4" @click="resetFilters">Xem tất cả sản phẩm</button>
+        </div>
+
+        <div class="row g-4" v-else>
+          <div class="col-12 col-sm-6 col-lg-4 col-xl-3" v-for="item in filteredProducts" :key="item.id">
+            <div class="card product-card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+              <div class="position-relative cursor-pointer" @click="openProductDetail(item)">
+                <img :src="item.image" class="card-img-top product-img" :alt="item.name" :class="{ 'opacity-50 grayscale': item.stock <= 0 }" onerror="this.src='https://via.placeholder.com/400x300?text=Nong+San+Sach'">
+                <span v-if="isProductOnSale(item.id)" class="position-absolute top-0 start-0 bg-danger text-white badge m-2 px-2 py-1 shadow">
+                  <i class="fa-solid fa-bolt me-1"></i>SALE -{{ flashSaleDiscount }}%
+                </span>
+                <span class="position-absolute top-0 end-0 bg-success text-white badge m-2 px-2 py-1 shadow-sm">
+                  {{ item.badge }}
+                </span>
+                <span v-if="item.stock <= 0" class="position-absolute top-50 start-50 translate-middle badge bg-danger fs-6 px-3 py-2 shadow">
+                  TẠM HẾT HÀNG
+                </span>
+                <span v-else-if="item.stock <= 10" class="position-absolute bottom-0 start-0 bg-warning text-dark badge m-2 px-2 py-1 shadow-sm">
+                  <i class="fa-solid fa-fire me-1"></i>Sắp hết (Còn {{ item.stock }})
+                </span>
+              </div>
+
+              <div class="card-body d-flex flex-column p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                    <i class="fa-solid fa-location-dot me-1"></i>{{ item.origin }}
+                  </span>
+                  <span class="small fw-bold text-warning cursor-pointer" @click="openProductDetail(item, 'reviews')" title="Xem đánh giá khách hàng">
+                    <i class="fa-solid fa-star"></i> {{ getAverageRating(item.id) }}
+                    <span class="text-muted fw-normal">({{ getReviewCount(item.id) }})</span>
+                  </span>
+                </div>
+
+                <h6 class="card-title fw-bold text-dark mb-1 cursor-pointer" @click="openProductDetail(item)">
+                  {{ item.name }}
+                </h6>
+                <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+                  <span class="text-truncate" style="max-width: 140px;" :title="item.supplier">
+                    <i class="fa-solid fa-tractor text-success me-1"></i>{{ item.supplier }}
+                  </span>
+                  <span class="fw-semibold" :class="item.stock > 10 ? 'text-success' : (item.stock > 0 ? 'text-warning-emphasis' : 'text-danger')">
+                    Kho: {{ item.stock }} {{ item.unit }}
+                  </span>
+                </div>
+                <p class="text-muted small flex-grow-1 mb-2">{{ item.description }}</p>
+
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <div>
+                    <span class="text-danger fw-bold fs-5">{{ formatPrice(getEffectivePrice(item)) }}</span>
+                    <small v-if="isProductOnSale(item.id)" class="text-muted text-decoration-line-through d-block">{{ formatPrice(item.price) }}</small>
+                    <small v-else class="text-muted">/{{ item.unit }}</small>
+                  </div>
+
+                  <div class="d-flex gap-1" v-if="isAdmin">
+                    <button class="btn btn-outline-primary btn-sm" title="Chỉnh sửa sản phẩm" @click="editProductFromStore(item)">
+                      <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="btn btn-warning btn-sm fw-bold px-2" title="Lập phiếu nhập kho" @click="openSupplyModal(item)">
+                      <i class="fa-solid fa-boxes-packing me-1"></i>Kho
+                    </button>
+                  </div>
+                  <div class="d-flex gap-1" v-else>
+                    <button class="btn btn-outline-secondary btn-sm" title="Xem Hộ chiếu QR, Mẹo sơ chế & Đánh giá" @click="openProductDetail(item)">
+                      <i class="fa-solid fa-qrcode"></i>
+                    </button>
+                    <button class="btn btn-success btn-sm px-2 fw-semibold" :disabled="item.stock <= 0" @click="addToCart(item, 1)">
+                      <i class="fa-solid fa-cart-plus me-1"></i>{{ item.stock > 0 ? 'Thêm' : 'Hết' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container my-5" id="lien-he">
+        <div class="section-card p-4 p-md-5">
+          <div class="row g-4 align-items-center">
+            <div class="col-md-6">
+              <h4 class="fw-bold text-success mb-3">
+                <i class="fa-solid fa-handshake-angle me-2"></i>LIÊN HỆ ĐẶT SỈ & HỢP TÁC CUNG ỨNG
+              </h4>
+              <p class="text-muted">
+                Cửa hàng luôn chào đón các Hợp tác xã, Nhà vườn tại ĐBSCL kết nối tiêu thụ nông sản sạch hoặc khách hàng cá nhân, nhà hàng cần đặt sỉ số lượng lớn.
+              </p>
+              <ul class="list-unstyled text-secondary">
+                <li class="mb-2"><i class="fa-solid fa-location-dot text-success me-2"></i> <strong>Kho trung chuyển:</strong> Khu vực ĐBSCL - Vĩnh Long & Trà Vinh</li>
+                <li class="mb-2"><i class="fa-solid fa-phone text-success me-2"></i> <strong>Điện thoại / Zalo:</strong> 0348 914 077</li>
+                <li class="mb-2"><i class="fa-solid fa-envelope text-success me-2"></i> <strong>Email:</strong> khanhduytv3011@gmail.com</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <form @submit.prevent="handleContactSubmit" class="bg-light p-4 rounded-4 border">
+                <h6 class="fw-bold text-dark mb-3">Gửi yêu cầu tư vấn nhanh</h6>
+                <div class="mb-3">
+                  <input type="text" v-model="contactForm.name" class="form-control" placeholder="Họ và tên của bạn / Tên Nhà vườn *" required>
+                </div>
+                <div class="mb-3">
+                  <input type="text" v-model="contactForm.contact" class="form-control" placeholder="Số điện thoại hoặc Email liên hệ *" required>
+                </div>
+                <div class="mb-3">
+                  <textarea v-model="contactForm.message" class="form-control" rows="3" placeholder="Nội dung cần tư vấn hoặc báo giá nguồn cung..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-success w-100 fw-semibold py-2">
+                  <i class="fa-solid fa-paper-plane me-2"></i>Gửi thông tin
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button v-if="!isAdmin" type="button" class="floating-cart-pill d-print-none" data-bs-toggle="modal" data-bs-target="#cartModal">
+        <span class="floating-cart-icon">
+          <i class="fa-solid fa-basket-shopping"></i>
+          <span class="floating-cart-badge">{{ totalCartItems }}</span>
+        </span>
+        <span class="floating-cart-info text-start">
+          <small class="d-block">Giỏ nông sản</small>
+          <strong>{{ formatPrice(totalCartPrice) }}</strong>
+        </span>
+      </button>
+
+      <div v-if="realOrderNotificationVisible && latestRealOrderAlert" class="social-proof-popup shadow border d-print-none">
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-2" style="font-size: 10px;" @click="realOrderNotificationVisible = false"></button>
+        <div class="d-flex align-items-center gap-3 cursor-pointer" @click="openProductDetail(latestRealOrderAlert.product)">
+          <img :src="latestRealOrderAlert.product.image" class="rounded-3" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/52'">
+          <div class="pe-3">
+            <div class="small text-dark">
+              <strong>{{ latestRealOrderAlert.customerName }}</strong> <span class="text-muted">({{ latestRealOrderAlert.address }})</span>
+            </div>
+            <div class="small text-success fw-bold text-truncate" style="max-width: 220px;">
+              Vừa đặt mua {{ latestRealOrderAlert.qty }} {{ latestRealOrderAlert.product.unit }} {{ latestRealOrderAlert.product.name }}
+            </div>
+            <small class="text-muted" style="font-size: 11px;">
+              <i class="fa-solid fa-circle-check text-success me-1"></i>Đơn hàng #{{ latestRealOrderAlert.orderId }} • {{ latestRealOrderAlert.time }}
+            </small>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div v-if="viewMode === 'admin' && isAdmin" class="container-fluid py-4 px-lg-4 admin-wrapper">
+      <div class="row g-4">
+
+        <div class="col-lg-3 col-xl-2">
+          <div class="bg-white rounded-4 shadow-sm p-3 sticky-lg-top" style="top: 85px;">
+            <div class="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom">
+              <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 44px; height: 44px;">
+                <i class="fa-solid fa-user-shield fs-5"></i>
+              </div>
+              <div class="overflow-hidden">
+                <div class="fw-bold text-dark small text-truncate">{{ currentUser.name }}</div>
+                <span class="badge bg-danger" style="font-size: 10px;">Quản trị hệ thống</span>
+              </div>
+            </div>
+
+            <div class="nav flex-column nav-pills gap-1">
+              <button class="nav-link text-start fw-semibold" :class="{ active: adminTab === 'dashboard' }" @click="adminTab = 'dashboard'">
+                <i class="fa-solid fa-chart-pie me-2" style="width: 20px;"></i>Tổng quan hệ thống
+              </button>
+              <button class="nav-link text-start fw-semibold d-flex justify-content-between align-items-center" :class="{ active: adminTab === 'inventory' }" @click="adminTab = 'inventory'">
+                <span><i class="fa-solid fa-boxes-stacked me-2" style="width: 20px;"></i>Kho & Cung ứng</span>
+                <span v-if="lowStockCount > 0" class="badge bg-danger rounded-pill">{{ lowStockCount }}</span>
+              </button>
+              <button class="nav-link text-start fw-semibold" :class="{ active: adminTab === 'logs' }" @click="adminTab = 'logs'">
+                <i class="fa-solid fa-clipboard-check me-2" style="width: 20px;"></i>Nhật ký Nhập/Xuất
+              </button>
+              <button class="nav-link text-start fw-semibold" :class="{ active: adminTab === 'suppliers' }" @click="adminTab = 'suppliers'">
+                <i class="fa-solid fa-tractor me-2" style="width: 20px;"></i>Nhà vườn / HTX ({{ suppliers.length }})
+              </button>
+              <button class="nav-link text-start fw-semibold d-flex justify-content-between align-items-center" :class="{ active: adminTab === 'orders' }" @click="adminTab = 'orders'">
+                <span><i class="fa-solid fa-truck-fast me-2" style="width: 20px;"></i>Đơn đặt hàng ({{ orders.length }})</span>
+                <span v-if="pendingOrdersCount > 0" class="badge bg-warning text-dark rounded-pill">{{ pendingOrdersCount }} mới</span>
+              </button>
+              <button class="nav-link text-start fw-semibold d-flex justify-content-between align-items-center" :class="{ active: adminTab === 'messages' }" @click="adminTab = 'messages'">
+                <span><i class="fa-solid fa-envelope-open-text me-2" style="width: 20px;"></i>Yêu cầu tư vấn</span>
+                <span v-if="unreadMessagesCount > 0" class="badge bg-danger rounded-pill">{{ unreadMessagesCount }} mới</span>
+              </button>
+              <button class="nav-link text-start fw-semibold" :class="{ active: adminTab === 'users' }" @click="adminTab = 'users'">
+                <i class="fa-solid fa-users-gear me-2" style="width: 20px;"></i>Tài khoản ({{ users.length }})
+              </button>
+            </div>
+
+            <hr>
+            <div class="small fw-bold text-muted mb-2 px-1">CÔNG CỤ BÁO CÁO</div>
+            <button class="btn btn-outline-success btn-sm w-100 mb-2 fw-semibold text-start" @click="exportInventoryCSV">
+              <i class="fa-solid fa-file-excel me-2"></i>Xuất Báo cáo Tồn kho
+            </button>
+            <button class="btn btn-outline-primary btn-sm w-100 mb-2 fw-semibold text-start" @click="exportOrdersCSV">
+              <i class="fa-solid fa-file-csv me-2"></i>Xuất Báo cáo Đơn hàng
+            </button>
+            <button class="btn btn-outline-secondary btn-sm w-100 text-start" @click="resetDefaultData">
+              <i class="fa-solid fa-rotate me-2"></i>Khôi phục kho mặc định
+            </button>
+          </div>
+        </div>
+
+        <div class="col-lg-9 col-xl-10">
+
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+              <div class="bg-white p-3 rounded-4 shadow-sm border-start border-success border-4 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted fw-bold">QUY MÔ KHO HÀNG</small>
+                    <h4 class="fw-bold text-dark mb-0 mt-1">{{ allProducts.length }} mặt hàng</h4>
+                    <small class="text-success fw-semibold">Tổng tồn: {{ totalInventoryCount }} đơn vị</small>
+                  </div>
+                  <div class="bg-success bg-opacity-10 text-success p-3 rounded-3">
+                    <i class="fa-solid fa-warehouse fs-4"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+              <div class="bg-white p-3 rounded-4 shadow-sm border-start border-primary border-4 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted fw-bold">GIÁ TRỊ TỒN KHO (BÁN LẺ)</small>
+                    <h4 class="fw-bold text-primary mb-0 mt-1">{{ formatPrice(totalInventoryValue) }}</h4>
+                    <small class="text-muted">Vốn ước tính: {{ formatPrice(totalInventoryCost) }}</small>
+                  </div>
+                  <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3">
+                    <i class="fa-solid fa-sack-dollar fs-4"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+              <div class="bg-white p-3 rounded-4 shadow-sm border-start border-warning border-4 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted fw-bold">CẢNH BÁO TỒN KHO</small>
+                    <h4 class="fw-bold text-danger mb-0 mt-1">{{ lowStockCount }} mặt hàng</h4>
+                    <small class="text-muted">Trong đó <strong>{{ outOfStockCount }}</strong> đã hết hàng</small>
+                  </div>
+                  <div class="bg-warning bg-opacity-10 text-warning-emphasis p-3 rounded-3">
+                    <i class="fa-solid fa-triangle-exclamation fs-4"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+              <div class="bg-white p-3 rounded-4 shadow-sm border-start border-danger border-4 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted fw-bold">DOANH THU ({{ orders.length }} ĐƠN)</small>
+                    <h4 class="fw-bold text-success mb-0 mt-1">{{ formatPrice(totalRevenue) }}</h4>
+                    <small class="text-primary fw-semibold">Lãi gộp: ~{{ formatPrice(estimatedProfit) }}</small>
+                  </div>
+                  <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-3">
+                    <i class="fa-solid fa-chart-line fs-4"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'dashboard'" class="row g-4">
+            <div class="col-lg-7">
+              <div class="bg-white p-4 rounded-4 shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <h6 class="fw-bold text-danger m-0">
+                    <i class="fa-solid fa-bell me-2"></i>Cảnh báo Nông sản cần Nhập Bổ Sung (Tồn &le; 10)
+                  </h6>
+                  <button class="btn btn-sm btn-warning fw-bold" @click="openSupplyModal(lowStockProducts[0] || allProducts[0])">
+                    <i class="fa-solid fa-file-import me-1"></i>Lập phiếu nhập
+                  </button>
+                </div>
+
+                <div v-if="lowStockProducts.length === 0" class="text-center text-muted py-5">
+                  <i class="fa-solid fa-circle-check text-success fs-1 mb-2 d-block"></i>
+                  <h6>Tuyệt vời! Toàn bộ mặt hàng trong kho đều dồi dào (&gt; 10 đơn vị).</h6>
+                </div>
+
+                <div v-else class="table-responsive">
+                  <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Nông sản</th>
+                        <th>Nhà vườn cung ứng</th>
+                        <th>Tồn hiện tại</th>
+                        <th class="text-end">Điều phối nhanh</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="p in lowStockProducts" :key="p.id">
+                        <td>
+                          <div class="d-flex align-items-center gap-2">
+                            <img :src="p.image" class="rounded" style="width: 36px; height: 36px; object-fit: cover;">
+                            <div>
+                              <div class="fw-bold text-dark">{{ p.name }}</div>
+                              <small class="text-muted">{{ p.origin }}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{{ p.supplier }}</td>
+                        <td>
+                          <span class="badge" :class="p.stock <= 0 ? 'bg-danger' : 'bg-warning text-dark'">
+                            Còn {{ p.stock }} {{ p.unit }}
+                          </span>
+                        </td>
+                        <td class="text-end">
+                          <button class="btn btn-sm btn-outline-success me-1 fw-bold" @click="quickSupply(p, 20)">+20</button>
+                          <button class="btn btn-sm btn-success fw-bold" @click="openSupplyModal(p)">
+                            <i class="fa-solid fa-plus me-1"></i>Nhập kho
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+                <h6 class="fw-bold text-success mb-3 pb-2 border-bottom">
+                  <i class="fa-solid fa-layer-group me-2"></i>Tỷ trọng Tồn kho theo Nhóm Nông Sản
+                </h6>
+                <div v-for="stat in categoryStats" :key="stat.category" class="mb-3">
+                  <div class="d-flex justify-content-between small fw-semibold mb-1">
+                    <span>{{ stat.category }} ({{ stat.count }} mặt hàng)</span>
+                    <span class="text-success">{{ stat.stock }} đv — {{ formatPrice(stat.value) }}</span>
+                  </div>
+                  <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" :style="{ width: stat.percent + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Biến động Kho mới nhất</h6>
+                  <a href="#" class="small text-success fw-semibold text-decoration-none" @click.prevent="adminTab = 'logs'">Xem tất cả</a>
+                </div>
+                <div class="d-flex flex-column gap-2 small">
+                  <div v-for="log in supplyLogs.slice(0, 4)" :key="log.id" class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                    <div>
+                      <span class="badge me-1" :class="log.type === 'IMPORT' ? 'bg-success' : (log.type === 'EXPORT' ? 'bg-primary' : 'bg-danger')">
+                        {{ log.type === 'IMPORT' ? 'Nhập' : (log.type === 'EXPORT' ? 'Xuất' : 'Hao hụt') }}
+                      </span>
+                      <strong>{{ log.productName }}</strong>
+                      <div class="text-muted" style="font-size: 11px;">{{ log.time }} • {{ log.supplier }}</div>
+                    </div>
+                    <span class="fw-bold" :class="log.qtyChange >= 0 ? 'text-success' : 'text-danger'">
+                      {{ log.qtyChange >= 0 ? '+' + log.qtyChange : log.qtyChange }} {{ log.unit }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'inventory'" class="bg-white p-4 rounded-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+              <div>
+                <h5 class="fw-bold text-success m-0"><i class="fa-solid fa-boxes-stacked me-2"></i>Quản lý Danh mục & Điều phối Tồn kho</h5>
+                <small class="text-muted">Quản lý giá vốn, giá bán lẻ, nhà vườn cung cấp và nhập/huỷ lô hàng</small>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-warning btn-sm fw-bold px-3" @click="openSupplyModal(allProducts[0])">
+                  <i class="fa-solid fa-truck-ramp-box me-1"></i>Lập Phiếu Nhập Kho / Kiểm Kê
+                </button>
+                <button class="btn btn-success btn-sm fw-bold px-3" @click="openProductForm()">
+                  <i class="fa-solid fa-plus me-1"></i>Thêm Nông Sản Mới
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                  <input type="text" v-model="adminSearch" class="form-control" placeholder="Tìm tên nông sản, xuất xứ, nhà vườn...">
+                </div>
+              </div>
+              <div class="col-md-5">
+                <div class="btn-group btn-group-sm w-100">
+                  <button class="btn btn-outline-secondary" :class="{ active: stockFilter === 'all' }" @click="stockFilter = 'all'">Tất cả ({{ allProducts.length }})</button>
+                  <button class="btn btn-outline-success" :class="{ active: stockFilter === 'ok' }" @click="stockFilter = 'ok'">Đủ hàng (&gt;10)</button>
+                  <button class="btn btn-outline-warning" :class="{ active: stockFilter === 'low' }" @click="stockFilter = 'low'">Sắp hết ({{ lowStockCount }})</button>
+                  <button class="btn btn-outline-danger" :class="{ active: stockFilter === 'out' }" @click="stockFilter = 'out'">Hết hàng ({{ outOfStockCount }})</button>
+                </div>
+              </div>
+              <div class="col-md-3 text-md-end">
+                <select v-model="adminCategoryFilter" class="form-select form-select-sm">
+                  <option v-for="c in categories" :key="c" :value="c">Nhóm: {{ c }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div v-if="showProductForm" class="card border-success mb-4 bg-light shadow-sm">
+              <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+                <span class="fw-bold">
+                  <i class="fa-solid fa-seedling me-2"></i>{{ isEditingProduct ? 'Cập nhật thông tin Nông sản #' + productForm.id : 'Thêm Nông sản mới vào Hệ thống' }}
+                </span>
+                <button class="btn-close btn-close-white btn-sm" @click="showProductForm = false"></button>
+              </div>
+              <div class="card-body">
+                <form @submit.prevent="saveProductForm">
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Tên nông sản *</label>
+                      <input type="text" v-model="productForm.name" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Danh mục *</label>
+                      <select v-model="productForm.category" class="form-select form-select-sm" required>
+                        <option value="Trái cây">Trái cây</option>
+                        <option value="Rau củ">Rau củ</option>
+                        <option value="Nông sản khô">Nông sản khô</option>
+                        <option value="Nấm tươi">Nấm tươi</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Nhà vườn / HTX cung ứng *</label>
+                      <select v-model="productForm.supplier" class="form-select form-select-sm" required>
+                        <option v-for="sup in suppliers" :key="sup.id" :value="sup.name">{{ sup.name }}</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Đơn vị tính *</label>
+                      <input type="text" v-model="productForm.unit" class="form-control form-control-sm" placeholder="kg, bó 500g..." required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Giá vốn nhập (VNĐ) *</label>
+                      <input type="number" v-model.number="productForm.costPrice" class="form-control form-control-sm" min="500" step="500" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Giá bán lẻ (VNĐ) *</label>
+                      <input type="number" v-model.number="productForm.price" class="form-control form-control-sm" min="1000" step="1000" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Số lượng tồn *</label>
+                      <input type="number" v-model.number="productForm.stock" class="form-control form-control-sm" min="0" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Xuất xứ *</label>
+                      <input type="text" v-model="productForm.origin" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-bold">Nhãn chứng nhận</label>
+                      <input type="text" v-model="productForm.badge" class="form-control form-control-sm" placeholder="VietGAP, Hữu cơ...">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">URL Hình ảnh *</label>
+                      <input type="url" v-model="productForm.image" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Mô tả chất lượng</label>
+                      <input type="text" v-model="productForm.description" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Hướng dẫn bảo quản</label>
+                      <input type="text" v-model="productForm.storage" class="form-control form-control-sm" required>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary btn-sm me-2" @click="showProductForm = false">Hủy</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3">
+                      <i class="fa-solid fa-floppy-disk me-1"></i>Lưu thông tin
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle small">
+                <thead class="table-success">
+                  <tr>
+                    <th>Mã</th>
+                    <th>Nông sản</th>
+                    <th>Nguồn cung ứng</th>
+                    <th>Giá vốn / Giá bán</th>
+                    <th style="width: 245px;">Tồn kho & Điều phối nhanh</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in adminFilteredProducts" :key="p.id">
+                    <td class="fw-bold text-secondary">#{{ p.id }}</td>
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <img :src="p.image" class="rounded border" style="width: 44px; height: 44px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/44'">
+                        <div>
+                          <div class="fw-bold text-dark">{{ p.name }}</div>
+                          <span class="badge bg-light text-secondary border">{{ p.category }}</span>
+                          <span class="badge bg-success bg-opacity-10 text-success ms-1">{{ p.badge }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="fw-semibold text-success">{{ p.supplier }}</div>
+                      <small class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ p.origin }} ({{ p.unit }})</small>
+                    </td>
+                    <td>
+                      <div class="text-muted">Vốn: {{ formatPrice(p.costPrice || p.price * 0.7) }}</div>
+                      <div class="fw-bold text-danger">Bán: {{ formatPrice(p.price) }}</div>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center gap-1">
+                        <input type="number" v-model.number="p.stock" @change="updateStockDirect(p)" class="form-control form-control-sm text-center fw-bold" style="width: 68px;" min="0">
+                        <button class="btn btn-outline-success btn-sm px-2" @click="quickSupply(p, 10)" title="Nhập nhanh +10">+10</button>
+                        <button class="btn btn-outline-primary btn-sm px-2" @click="quickSupply(p, 50)" title="Nhập nhanh +50">+50</button>
+                        <button class="btn btn-warning btn-sm px-2" @click="openSupplyModal(p)" title="Lập phiếu nhập / xuất hủy">
+                          <i class="fa-solid fa-file-import"></i>
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <span v-if="p.stock <= 0" class="badge bg-danger">Hết hàng (0)</span>
+                      <span v-else-if="p.stock <= 10" class="badge bg-warning text-dark">Sắp hết ({{ p.stock }})</span>
+                      <span v-else class="badge bg-success">Đủ hàng ({{ p.stock }})</span>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-primary me-1" @click="openProductForm(p)" title="Chỉnh sửa">
+                        <i class="fa-solid fa-pen"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)" title="Xóa mặt hàng">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'logs'" class="bg-white p-4 rounded-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom">
+              <div>
+                <h5 class="fw-bold text-success m-0"><i class="fa-solid fa-clipboard-check me-2"></i>Nhật ký Giao dịch Cung ứng & Kiểm kê Kho</h5>
+                <small class="text-muted">Lưu vết toàn bộ phiếu nhập hàng từ nhà vườn, xuất bán cho khách và xuất hủy nông sản hỏng</small>
+              </div>
+              <button class="btn btn-warning btn-sm fw-bold" @click="openSupplyModal(allProducts[0])">
+                <i class="fa-solid fa-plus me-1"></i>Lập Phiếu Nhập / Kiểm Kê Mới
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Mã phiếu</th>
+                    <th>Thời gian</th>
+                    <th>Loại nghiệp vụ</th>
+                    <th>Nông sản</th>
+                    <th>Biến động</th>
+                    <th>Tồn sau GD</th>
+                    <th>Chi phí / Giá trị</th>
+                    <th>Đối tác / Ghi chú</th>
+                    <th class="text-end">In phiếu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="log in supplyLogs" :key="log.id">
+                    <td class="fw-bold text-success">#{{ log.id }}</td>
+                    <td>{{ log.time }}</td>
+                    <td>
+                      <span class="badge" :class="log.type === 'IMPORT' ? 'bg-success' : (log.type === 'EXPORT' ? 'bg-primary' : 'bg-danger')">
+                        {{ log.type === 'IMPORT' ? 'Nhập kho (+)' : (log.type === 'EXPORT' ? 'Xuất bán (-)' : 'Hao hụt / Kiểm kê') }}
+                      </span>
+                    </td>
+                    <td class="fw-bold">{{ log.productName }}</td>
+                    <td class="fw-bold" :class="log.qtyChange >= 0 ? 'text-success' : 'text-danger'">
+                      {{ log.qtyChange >= 0 ? '+' + log.qtyChange : log.qtyChange }} {{ log.unit }}
+                    </td>
+                    <td class="fw-semibold">{{ log.newStock }} {{ log.unit }}</td>
+                    <td class="fw-semibold">{{ log.totalCost ? formatPrice(log.totalCost) : '—' }}</td>
+                    <td>
+                      <div class="fw-semibold">{{ log.supplier }}</div>
+                      <small class="text-muted">{{ log.note }} (Bởi: {{ log.actor || 'Admin' }})</small>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-secondary" @click="openPrintSupplyTicket(log)" title="Xem & In phiếu">
+                        <i class="fa-solid fa-print"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'suppliers'" class="bg-white p-4 rounded-4 shadow-sm">
+            <h5 class="fw-bold text-success mb-3 pb-2 border-bottom">
+              <i class="fa-solid fa-tractor me-2"></i>Quản lý Đối tác Nhà vườn & Hợp tác xã Cung ứng
+            </h5>
+
+            <form @submit.prevent="addSupplier" class="row g-2 mb-4 bg-light p-3 rounded-4 border">
+              <div class="col-md-3">
+                <label class="form-label small fw-bold mb-1">Tên Nhà vườn / HTX *</label>
+                <input type="text" v-model="supplierForm.name" class="form-control form-control-sm" placeholder="VD: HTX Nông Sản Cầu Kè" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Số điện thoại *</label>
+                <input type="tel" v-model="supplierForm.phone" class="form-control form-control-sm" placeholder="09xxxxxxxx" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold mb-1">Địa phương vùng trồng *</label>
+                <input type="text" v-model="supplierForm.location" class="form-control form-control-sm" placeholder="VD: Cầu Kè - Trà Vinh" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Nông sản chủ lực *</label>
+                <input type="text" v-model="supplierForm.mainCrop" class="form-control form-control-sm" placeholder="Cam sành, Dừa sáp..." required>
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">
+                  <i class="fa-solid fa-plus me-1"></i>Thêm Đối tác
+                </button>
+              </div>
+            </form>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle small">
+                <thead class="table-success">
+                  <tr>
+                    <th>Mã NCC</th>
+                    <th>Tên Nhà vườn / Hợp tác xã</th>
+                    <th>Số điện thoại</th>
+                    <th>Khu vực vùng trồng</th>
+                    <th>Nông sản cung ứng chính</th>
+                    <th>Số SP đang cung ứng</th>
+                    <th class="text-end">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="s in suppliers" :key="s.id">
+                    <td class="fw-bold">#{{ s.id }}</td>
+                    <td class="fw-bold text-success">{{ s.name }}</td>
+                    <td>{{ s.phone }}</td>
+                    <td><i class="fa-solid fa-location-dot text-danger me-1"></i>{{ s.location }}</td>
+                    <td><span class="badge bg-success bg-opacity-10 text-success border border-success">{{ s.mainCrop }}</span></td>
+                    <td class="fw-bold">{{ countProductsBySupplier(s.name) }} mặt hàng</td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-danger" @click="removeSupplier(s.id)" title="Xóa đối tác">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'orders'" class="bg-white p-4 rounded-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold text-success m-0"><i class="fa-solid fa-truck-fast me-2"></i>Quản lý Đơn đặt hàng & Điều phối Giao nhận ({{ orders.length }} đơn)</h5>
+                <small class="text-muted">Danh sách đơn mua hàng thực tế của các tài khoản khách hàng — Khi chuyển sang "Đã hủy", hệ thống tự động hoàn kho</small>
+              </div>
+              <button class="btn btn-outline-primary btn-sm fw-bold" @click="exportOrdersCSV">
+                <i class="fa-solid fa-download me-1"></i>Xuất danh sách đơn (CSV)
+              </button>
+            </div>
+
+            <div v-if="orders.length === 0" class="text-center text-muted py-5">Chưa có đơn đặt hàng nào trên hệ thống.</div>
+            <div v-else class="table-responsive">
+              <table class="table table-bordered align-middle small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng & Địa chỉ</th>
+                    <th>Chi tiết nông sản đặt mua</th>
+                    <th>Tổng thu</th>
+                    <th>Trạng thái điều phối</th>
+                    <th class="text-end">In đơn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="o in orders" :key="o.id">
+                    <td class="fw-bold text-success">
+                      #{{ o.id }}<br>
+                      <small class="text-muted fw-normal">{{ o.createdAt }}</small>
+                    </td>
+                    <td>
+                      <strong>{{ o.customer.name }}</strong> <span class="text-muted">(@{{ o.userId }})</span><br>
+                      <span class="text-primary fw-semibold"><i class="fa-solid fa-phone me-1"></i>{{ o.customer.phone }}</span><br>
+                      <span class="text-muted"><i class="fa-solid fa-map-pin me-1"></i>{{ o.customer.address }}</span><br>
+                      <span class="badge bg-secondary mt-1">{{ o.customer.payment }}</span>
+                    </td>
+                    <td>
+                      <div v-for="i in o.items" :key="i.id">
+                        • {{ i.name }} (<strong>x{{ i.quantity }}</strong> {{ i.unit }}) — {{ formatPrice(i.price * i.quantity) }}
+                      </div>
+                      <div v-if="o.freeGift" class="text-success fw-semibold mt-1">
+                        <i class="fa-solid fa-gift me-1"></i>Quà tặng kèm: {{ o.freeGift }}
+                      </div>
+                      <small v-if="o.customer.note" class="text-danger d-block mt-1">
+                        <i class="fa-solid fa-note-sticky me-1"></i>Ghi chú: {{ o.customer.note }}
+                      </small>
+                    </td>
+                    <td class="fw-bold text-danger fs-6">{{ formatPrice(o.total) }}</td>
+                    <td style="width: 195px;">
+                      <select v-model="o.status" @change="updateOrderStatus(o)" class="form-select form-select-sm fw-semibold">
+                        <option value="Chờ xử lý">Chờ xử lý</option>
+                        <option value="Đang đóng gói">Đang đóng gói</option>
+                        <option value="Đang giao">Đang giao</option>
+                        <option value="Hoàn thành">Hoàn thành</option>
+                        <option value="Đã hủy">Đã hủy (Hoàn kho)</option>
+                      </select>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-outline-dark" @click="openPrintOrderInvoice(o)" title="In hóa đơn giao hàng">
+                        <i class="fa-solid fa-print"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'messages'" class="bg-white p-4 rounded-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold text-success m-0">
+                  <i class="fa-solid fa-envelope-open-text me-2"></i>Hộp thư Yêu cầu Tư vấn Đặt sỉ & Hợp tác Cung ứng
+                </h5>
+                <small class="text-muted">Toàn bộ lời nhắn khách hàng và nhà vườn gửi từ biểu mẫu Liên hệ trên trang chủ sẽ hiển thị tại đây</small>
+              </div>
+              <span class="badge bg-success px-3 py-2">Tổng: {{ contactMessages.length }} tin nhắn</span>
+            </div>
+
+            <div v-if="contactMessages.length === 0" class="text-center text-muted py-5">
+              <i class="fa-regular fa-envelope-open fs-1 mb-2 d-block opacity-50"></i>
+              Chưa có yêu cầu tư vấn hoặc liên hệ hợp tác nào.
+            </div>
+
+            <div v-else class="table-responsive">
+              <table class="table table-bordered table-hover align-middle small">
+                <thead class="table-success">
+                  <tr>
+                    <th>Mã thư</th>
+                    <th>Thời gian gửi</th>
+                    <th>Người gửi / Nhà vườn</th>
+                    <th>SĐT / Email liên hệ</th>
+                    <th>Nội dung cần tư vấn / Báo giá</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="msg in contactMessages" :key="msg.id" :class="{ 'table-warning': msg.status === 'Chưa đọc' }">
+                    <td class="fw-bold text-success">#{{ msg.id }}</td>
+                    <td>{{ msg.createdAt }}</td>
+                    <td class="fw-bold text-dark">{{ msg.name }}</td>
+                    <td class="fw-semibold text-primary">{{ msg.contact }}</td>
+                    <td style="max-width: 340px;">{{ msg.message }}</td>
+                    <td>
+                      <span class="badge" :class="msg.status === 'Chưa đọc' ? 'bg-danger' : 'bg-success'">
+                        {{ msg.status }}
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm me-1" :class="msg.status === 'Chưa đọc' ? 'btn-success' : 'btn-outline-secondary'" @click="toggleMessageStatus(msg)" :title="msg.status === 'Chưa đọc' ? 'Đánh dấu đã tư vấn' : 'Đánh dấu chưa đọc'">
+                        <i class="fa-solid fa-check"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" @click="deleteContactMessage(msg.id)" title="Xóa tin nhắn">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="adminTab === 'users'" class="bg-white p-4 rounded-4 shadow-sm">
+            <h5 class="fw-bold text-success mb-3 pb-2 border-bottom">
+              <i class="fa-solid fa-users-gear me-2"></i>Quản lý Tài khoản Người dùng & Phân quyền Quản trị ({{ users.length }} tài khoản)
+            </h5>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle small">
+                <thead class="table-success">
+                  <tr>
+                    <th>Họ và tên</th>
+                    <th>Tên đăng nhập</th>
+                    <th>Email / Liên hệ</th>
+                    <th>Địa chỉ mặc định</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="u in users" :key="u.username">
+                    <td class="fw-bold">{{ u.name }}</td>
+                    <td><code>@{{ u.username }}</code></td>
+                    <td>{{ u.phone }}<br><small class="text-muted">{{ u.email }}</small></td>
+                    <td>{{ u.address || 'Chưa cập nhật' }}</td>
+                    <td>
+                      <span class="badge" :class="u.role === 'admin' ? 'bg-danger' : 'bg-success'">
+                        {{ u.role === 'admin' ? 'Quản trị viên (Admin)' : 'Khách hàng' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge" :class="u.locked ? 'bg-secondary' : 'bg-primary'">
+                        {{ u.locked ? 'Đang bị khóa' : 'Hoạt động' }}
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <template v-if="u.username !== 'khanhduyadmin'">
+                        <button class="btn btn-sm btn-outline-warning me-1" @click="toggleUserRole(u)" title="Chuyển quyền Admin / Khách">
+                          <i class="fa-solid fa-user-shield"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" @click="toggleUserLock(u)" :title="u.locked ? 'Mở khóa' : 'Khóa tài khoản'">
+                          <i class="fa-solid" :class="u.locked ? 'fa-unlock' : 'fa-lock'"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @click="deleteUser(u.username)" title="Xóa tài khoản">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
+                      </template>
+                      <span v-else class="badge bg-light text-muted border">Admin Mặc định</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0" v-if="selectedProduct">
+          <div class="modal-header border-bottom-0 pb-0">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-success px-3 py-2">{{ selectedProduct.badge }}</span>
+              <span v-if="isProductOnSale(selectedProduct.id)" class="badge bg-danger px-3 py-2">
+                <i class="fa-solid fa-bolt me-1"></i>ĐANG SALE -{{ flashSaleDiscount }}%
+              </span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body p-4">
+            <div class="row g-4 align-items-center mb-4">
+              <div class="col-md-5 text-center">
+                <img :src="selectedProduct.image" :alt="selectedProduct.name" class="img-fluid rounded-4 shadow-sm" style="max-height: 260px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/400x300?text=Nong+San+Sach'">
+              </div>
+              <div class="col-md-7">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small text-uppercase fw-bold">{{ selectedProduct.category }}</span>
+                  <span class="text-warning fw-bold small">
+                    <i class="fa-solid fa-star"></i> {{ getAverageRating(selectedProduct.id) }}/5
+                    <span class="text-muted fw-normal">({{ getReviewCount(selectedProduct.id) }} đánh giá)</span>
+                  </span>
+                </div>
+                <h3 class="fw-bold text-dark mt-1 mb-2">{{ selectedProduct.name }}</h3>
+                <p class="mb-2">
+                  <span class="badge bg-light text-dark border"><i class="fa-solid fa-location-dot text-success me-1"></i>Xuất xứ: {{ selectedProduct.origin }}</span>
+                  <span v-if="selectedProduct.stock > 0" class="badge bg-light text-success border ms-2">
+                    <i class="fa-solid fa-boxes-stacked me-1"></i>Kho còn: {{ selectedProduct.stock }} {{ selectedProduct.unit }}
+                  </span>
+                  <span v-else class="badge bg-danger text-white ms-2">Tạm hết hàng</span>
+                </p>
+
+                <div class="my-3">
+                  <span class="text-danger fw-bold fs-3">{{ formatPrice(getEffectivePrice(selectedProduct)) }}</span>
+                  <span v-if="isProductOnSale(selectedProduct.id)" class="text-muted text-decoration-line-through ms-2">{{ formatPrice(selectedProduct.price) }}</span>
+                  <span class="text-muted"> / {{ selectedProduct.unit }}</span>
+                </div>
+
+                <p class="text-secondary small mb-2">{{ selectedProduct.description }}</p>
+                <p class="small text-success mb-3"><i class="fa-solid fa-shield-halved me-1"></i><strong>Bảo quản:</strong> {{ selectedProduct.storage }}</p>
+                
+                <div v-if="isAdmin" class="d-flex gap-2 mt-3">
+                  <button class="btn btn-warning fw-bold flex-grow-1" data-bs-dismiss="modal" @click="openSupplyModal(selectedProduct)">
+                    <i class="fa-solid fa-boxes-packing me-1"></i>Lập Phiếu Nhập / Kiểm Kê Kho
+                  </button>
+                  <button class="btn btn-outline-primary fw-bold" data-bs-dismiss="modal" @click="editProductFromStore(selectedProduct)">
+                    <i class="fa-solid fa-pen me-1"></i>Sửa thông tin
+                  </button>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-3" v-else-if="selectedProduct.stock > 0">
+                  <div class="input-group" style="width: 130px;">
+                    <button class="btn btn-outline-secondary" type="button" @click="detailQuantity > 1 ? detailQuantity-- : null">-</button>
+                    <input type="text" class="form-control text-center fw-bold" v-model="detailQuantity" readonly>
+                    <button class="btn btn-outline-secondary" type="button" @click="detailQuantity < selectedProduct.stock ? detailQuantity++ : null">+</button>
+                  </div>
+                  <button class="btn btn-success flex-grow-1 py-2 fw-bold" @click="addToCartFromModal">
+                    <i class="fa-solid fa-cart-plus me-2"></i>Thêm vào giỏ ({{ formatPrice(getEffectivePrice(selectedProduct) * detailQuantity) }})
+                  </button>
+                </div>
+                <div v-else class="alert alert-danger mt-3 mb-0 py-2 small">
+                  Mặt hàng này hiện đang chờ lô thu hoạch mới từ hợp tác xã.
+                </div>
+              </div>
+            </div>
+
+            <ul class="nav nav-tabs fw-bold small mb-3">
+              <li class="nav-item">
+                <button class="nav-link" :class="{ active: detailTab === 'passport' }" @click="detailTab = 'passport'">
+                  <i class="fa-solid fa-qrcode me-1 text-success"></i>Hộ chiếu Nông sản QR
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" :class="{ active: detailTab === 'culinary' }" @click="detailTab = 'culinary'">
+                  <i class="fa-solid fa-kitchen-set me-1 text-primary"></i>Mẹo Sơ chế & Món ngon
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" :class="{ active: detailTab === 'reviews' }" @click="detailTab = 'reviews'">
+                  <i class="fa-solid fa-comments me-1 text-warning"></i>Đánh giá ({{ getReviewCount(selectedProduct.id) }})
+                </button>
+              </li>
+            </ul>
+
+            <div v-if="detailTab === 'passport'" class="p-3 rounded-4 bg-success bg-opacity-10 border border-success border-opacity-25">
+              <div class="row align-items-center g-3">
+                <div class="col-sm-8">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-success"><i class="fa-solid fa-certificate me-1"></i>CHỨNG NHẬN AN TOÀN VIETGAP</span>
+                    <span class="small fw-bold text-success">Độ tươi: 99%</span>
+                  </div>
+                  <div class="row g-2 small">
+                    <div class="col-6">
+                      <span class="text-muted d-block">Mã lô thu hoạch:</span>
+                      <strong class="text-dark">LO-{{ selectedProduct.id }}0{{ new Date().getDate() }}-PS</strong>
+                    </div>
+                    <div class="col-6">
+                      <span class="text-muted d-block">Thời gian thu hoạch:</span>
+                      <strong class="text-dark">05:30 Sáng hôm nay</strong>
+                    </div>
+                    <div class="col-6">
+                      <span class="text-muted d-block">Đơn vị canh tác:</span>
+                      <strong class="text-success">{{ selectedProduct.supplier }}</strong>
+                    </div>
+                    <div class="col-6">
+                      <span class="text-muted d-block">Năng lượng ước tính:</span>
+                      <strong class="text-dark">~{{ getNutritionInfo(selectedProduct).kcal }} kcal / {{ selectedProduct.unit }}</strong>
+                    </div>
+                  </div>
+                  <div class="mt-2 pt-2 border-top border-success border-opacity-25 small text-secondary">
+                    <i class="fa-solid fa-check-double text-success me-1"></i>Cam kết 3 KHÔNG: Không thuốc trừ sâu hóa học - Không chất kích thích tăng trưởng - Không chất bảo quản.
+                  </div>
+                </div>
+                <div class="col-sm-4 text-center">
+                  <div class="bg-white p-2 rounded-3 shadow-sm d-inline-block border">
+                    <img :src="getProductQrUrl(selectedProduct)" alt="QR Truy xuất" style="width: 115px; height: 115px;">
+                    <div class="small fw-bold text-success mt-1" style="font-size: 11px;">Quét mã truy xuất</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="detailTab === 'culinary'" class="p-3 rounded-4 bg-light border">
+              <div class="row g-3 small">
+                <div class="col-md-6">
+                  <div class="p-3 bg-white rounded-3 border h-100">
+                    <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-hand-sparkles me-2"></i>Bí quyết chọn & Sơ chế giữ Vitamin</h6>
+                    <p class="text-secondary mb-2">{{ getCulinaryTips(selectedProduct).prep }}</p>
+                    <div class="text-primary fw-semibold">
+                      <i class="fa-solid fa-lightbulb me-1"></i>Mẹo nhỏ: {{ getCulinaryTips(selectedProduct).secret }}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="p-3 bg-white rounded-3 border h-100">
+                    <h6 class="fw-bold text-danger mb-2"><i class="fa-solid fa-utensils me-2"></i>Gợi ý Món ngon hợp vị nhất</h6>
+                    <ul class="list-unstyled mb-0">
+                      <li v-for="(dish, i) in getCulinaryTips(selectedProduct).dishes" :key="i" class="mb-2 d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-circle-check text-success mt-1"></i>
+                        <span>{{ dish }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="detailTab === 'reviews'">
+              <form v-if="!isAdmin" @submit.prevent="submitReview" class="bg-light p-3 rounded-4 border mb-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+                  <span class="fw-bold small text-dark">
+                    <i class="fa-solid fa-pen-to-square text-success me-1"></i>Viết đánh giá của bạn về {{ selectedProduct.name }}
+                  </span>
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="small text-muted me-1">Chọn mức sao:</span>
+                    <i v-for="star in 5" :key="star" class="fa-star cursor-pointer fs-5" :class="star <= reviewForm.rating ? 'fa-solid text-warning' : 'fa-regular text-secondary'" @click="reviewForm.rating = star"></i>
+                  </div>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-4" v-if="!currentUser">
+                    <input type="text" v-model="reviewForm.reviewerName" class="form-control form-control-sm" placeholder="Tên của bạn *" required>
+                  </div>
+                  <div :class="currentUser ? 'col-md-9' : 'col-md-6'">
+                    <input type="text" v-model="reviewForm.comment" class="form-control form-control-sm" placeholder="Chia sẻ cảm nhận về độ tươi ngon, đóng gói..." required>
+                  </div>
+                  <div :class="currentUser ? 'col-md-3' : 'col-md-2'">
+                    <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Gửi đánh giá</button>
+                  </div>
+                </div>
+              </form>
+
+              <div v-if="getProductReviews(selectedProduct.id).length === 0" class="text-center text-muted py-3 small bg-white rounded-3 border">
+                Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên nhận xét!
+              </div>
+
+              <div v-else class="d-flex flex-column gap-2" style="max-height: 240px; overflow-y: auto;">
+                <div v-for="rev in getProductReviews(selectedProduct.id)" :key="rev.id" class="p-3 rounded-3 border bg-white small">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div>
+                      <strong class="text-dark">{{ rev.userName }}</strong>
+                      <span v-if="rev.verified" class="badge bg-success bg-opacity-10 text-success ms-2" style="font-size: 10px;">
+                        <i class="fa-solid fa-circle-check me-1"></i>Đã mua hàng
+                      </span>
+                    </div>
+                    <small class="text-muted">{{ rev.date }}</small>
+                  </div>
+                  <div class="text-warning mb-1" style="font-size: 11px;">
+                    <i v-for="n in 5" :key="n" class="fa-star" :class="n <= rev.rating ? 'fa-solid' : 'fa-regular text-muted'"></i>
+                  </div>
+                  <div class="text-secondary">{{ rev.comment }}</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-cart-shopping me-2"></i>Giỏ hàng của bạn ({{ totalCartItems }} sản phẩm)
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div v-if="cart.length === 0" class="text-center text-muted py-5">
+              <i class="fa-solid fa-basket-shopping fs-1 mb-3 text-secondary opacity-50 d-block"></i>
+              <h6>Giỏ hàng của bạn đang trống!</h6>
+              <p class="small">Hãy chọn thêm các mặt hàng nông sản tươi ngon hoặc dùng Trợ lý Đi chợ nhé.</p>
+            </div>
+
+            <div v-else>
+
+              <div class="p-3 rounded-4 mb-3 border" :class="totalCartPrice >= 300000 ? 'bg-warning bg-opacity-10 border-warning' : 'bg-light'">
+                <div class="d-flex justify-content-between align-items-center small fw-bold mb-2">
+                  <span v-if="totalCartPrice < 150000" class="text-dark">
+                    <i class="fa-solid fa-truck-fast text-success me-1"></i>Mua thêm <strong class="text-danger">{{ formatPrice(150000 - totalCartPrice) }}</strong> nữa để được <strong>MIỄN PHÍ GIAO HÀNG!</strong>
+                  </span>
+                  <span v-else-if="totalCartPrice < 300000" class="text-success">
+                    <i class="fa-solid fa-circle-check me-1"></i>Đã được <strong>Freeship!</strong> Mua thêm <strong class="text-danger">{{ formatPrice(300000 - totalCartPrice) }}</strong> để nhận <strong>Quà tặng Rau gia vị Hữu cơ!</strong>
+                  </span>
+                  <span v-else class="text-success">
+                    <i class="fa-solid fa-gift text-danger me-1"></i>Tuyệt vời! Bạn nhận được <strong>MIỄN PHÍ GIAO HÀNG + Quà tặng 1 bó Hành Ngò Hữu Cơ!</strong>
+                  </span>
+                  <span class="badge bg-success">{{ Math.min(100, Math.round((totalCartPrice / 300000) * 100)) }}%</span>
+                </div>
+                <div class="progress" style="height: 10px; border-radius: 8px;">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" :style="{ width: Math.min(100, Math.round((totalCartPrice / 300000) * 100)) + '%' }"></div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1" style="font-size: 11px;">
+                  <span>0đ</span>
+                  <span :class="{ 'fw-bold text-success': totalCartPrice >= 150000 }"><i class="fa-solid fa-truck"></i> Mốc 150K: Freeship</span>
+                  <span :class="{ 'fw-bold text-danger': totalCartPrice >= 300000 }"><i class="fa-solid fa-gift"></i> Mốc 300K: Tặng Rau sạch</span>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end mb-2">
+                <button class="btn btn-sm btn-outline-danger" @click="clearCart">
+                  <i class="fa-solid fa-trash-can me-1"></i>Xóa toàn bộ giỏ
+                </button>
+              </div>
+              <ul class="list-group list-group-flush">
+                <li v-for="item in cart" :key="item.id" class="list-group-item d-flex flex-wrap align-items-center justify-content-between px-0 py-3 gap-2">
+                  <div class="d-flex align-items-center">
+                    <img :src="item.image" class="rounded-3 me-3" :alt="item.name" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60?text=Fruit'">
+                    <div>
+                      <h6 class="mb-1 fw-bold">
+                        {{ item.name }}
+                        <span v-if="isProductOnSale(item.id)" class="badge bg-danger ms-1" style="font-size: 10px;">Sale -{{ flashSaleDiscount }}%</span>
+                      </h6>
+                      <small class="text-muted">{{ formatPrice(item.price) }} / {{ item.unit }}</small>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary px-2 py-0" @click="changeQuantity(item.id, -1)">-</button>
+                    <span class="fw-bold px-2">{{ item.quantity }}</span>
+                    <button class="btn btn-sm btn-outline-secondary px-2 py-0" @click="changeQuantity(item.id, 1)">+</button>
+                    <span class="fw-bold text-success ms-2" style="min-width: 90px; text-align: right;">
+                      {{ formatPrice(item.price * item.quantity) }}
+                    </span>
+                    <button class="btn btn-sm btn-link text-danger ms-2 p-0" @click="removeFromCart(item.id)">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </div>
+                </li>
+
+                <li v-if="totalCartPrice >= 300000" class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-success bg-opacity-10 rounded-3 mt-2 border border-success border-opacity-25">
+                  <div class="d-flex align-items-center gap-2 small">
+                    <i class="fa-solid fa-gift text-danger fs-5"></i>
+                    <div>
+                      <strong class="text-success">Quà tặng Nhà vườn: 01 Bó Hành Lá & Ngò Rí Hữu Cơ</strong>
+                      <div class="text-muted" style="font-size: 11px;">Tự động đính kèm cho đơn hàng từ 300.000đ</div>
+                    </div>
+                  </div>
+                  <span class="badge bg-success">MIỄN PHÍ 0đ</span>
+                </li>
+              </ul>
+
+              <div class="p-3 rounded-4 bg-success bg-opacity-10 border border-success border-opacity-25 mt-3">
+                <div class="d-flex align-items-center gap-2 fw-bold text-success small mb-2">
+                  <i class="fa-solid fa-heart-pulse fs-5"></i>
+                  <span>CHUYÊN GIA DINH DƯỠNG ƯỚC TÍNH CHO GIỎ HÀNG CỦA BẠN:</span>
+                </div>
+                <div class="row g-2 small">
+                  <div class="col-sm-4">
+                    <div class="bg-white p-2 rounded-3 border text-center">
+                      <span class="text-muted d-block">Tổng Năng Lượng</span>
+                      <strong class="text-danger fs-6">~{{ cartNutritionSummary.totalKcal }} kcal</strong>
+                    </div>
+                  </div>
+                  <div class="col-sm-4">
+                    <div class="bg-white p-2 rounded-3 border text-center">
+                      <span class="text-muted d-block">Khẩu Phần Phù Hợp</span>
+                      <strong class="text-success fs-6">{{ cartNutritionSummary.servings }} người ăn</strong>
+                    </div>
+                  </div>
+                  <div class="col-sm-4">
+                    <div class="bg-white p-2 rounded-3 border text-center">
+                      <span class="text-muted d-block">Dưỡng Chất Nổi Bật</span>
+                      <strong class="text-primary">{{ cartNutritionSummary.vitamins }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-top small">
+                <div class="d-flex justify-content-between mb-1">
+                  <span class="text-muted">Tạm tính tiền hàng:</span>
+                  <span class="fw-semibold">{{ formatPrice(totalCartPrice) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Phí giao hàng nhanh (2h):</span>
+                  <span v-if="shippingFee === 0" class="text-success fw-bold">Miễn phí (0 đ)</span>
+                  <span v-else class="fw-semibold">{{ formatPrice(shippingFee) }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top fw-bold fs-5">
+                  <span>Tổng thanh toán:</span>
+                  <span class="text-danger fs-4">{{ formatPrice(finalCheckoutPrice) }}</span>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-top">
+                <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-truck me-2"></i>Thông tin giao nhận nông sản</h6>
+                <form @submit.prevent="handleCheckout">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Họ và tên người nhận *</label>
+                      <input type="text" v-model="checkoutForm.name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Số điện thoại (10 số) *</label>
+                      <input type="tel" v-model="checkoutForm.phone" class="form-control" required>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Địa chỉ giao hàng chi tiết *</label>
+                      <input type="text" v-model="checkoutForm.address" class="form-control" placeholder="Số nhà, đường, phường/xã, quận/huyện..." required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Phương thức thanh toán</label>
+                      <select v-model="checkoutForm.payment" class="form-select">
+                        <option value="COD">Thanh toán khi nhận hàng (COD)</option>
+                        <option value="BANK">Chuyển khoản ngân hàng (Mã VietQR)</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Ghi chú đơn hàng</label>
+                      <input type="text" v-model="checkoutForm.note" class="form-control" placeholder="Giao buổi sáng, chọn trái chín...">
+                    </div>
+
+                    <div class="col-12" v-if="checkoutForm.payment === 'BANK'">
+                      <div class="p-3 rounded-4 bg-light border text-center">
+                        <div class="fw-bold text-success small mb-2">
+                          <i class="fa-solid fa-qrcode me-1"></i>Quét mã QR Ngân hàng tự động điền đúng số tiền {{ formatPrice(finalCheckoutPrice) }}
+                        </div>
+                        <img :src="bankQrUrl" alt="VietQR" class="img-fluid rounded-3 shadow-sm border bg-white p-2" style="max-height: 210px;">
+                        <div class="small text-muted mt-2">
+                          Chủ TK: <strong>KIEN KHANH DUY</strong> | Nội dung: <code>HUONGSAC {{ checkoutForm.phone || 'THANHTOAN' }}</code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-success w-100 mt-4 py-2 fw-bold fs-6">
+                    <i class="fa-solid fa-check me-2"></i>Xác nhận Đặt hàng ({{ formatPrice(finalCheckoutPrice) }})
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="supplyModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold"><i class="fa-solid fa-boxes-packing me-2"></i>Lập Phiếu Điều Phối Kho Hàng</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form @submit.prevent="submitSupplyTicket">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Loại nghiệp vụ kho *</label>
+                <div class="btn-group w-100" role="group">
+                  <button type="button" class="btn btn-sm fw-bold" :class="supplyForm.mode === 'IMPORT' ? 'btn-success' : 'btn-outline-success'" @click="supplyForm.mode = 'IMPORT'">
+                    <i class="fa-solid fa-circle-plus me-1"></i>Nhập hàng mới từ Nhà vườn (+)
+                  </button>
+                  <button type="button" class="btn btn-sm fw-bold" :class="supplyForm.mode === 'DAMAGE' ? 'btn-danger' : 'btn-outline-danger'" @click="supplyForm.mode = 'DAMAGE'">
+                    <i class="fa-solid fa-circle-minus me-1"></i>Xuất hủy hàng hỏng / Hao hụt (-)
+                  </button>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Chọn mặt hàng nông sản *</label>
+                <select v-model="supplyForm.productId" class="form-select" required>
+                  <option v-for="p in allProducts" :key="p.id" :value="p.id">
+                    #{{ p.id }} - {{ p.name }} (Đang tồn: {{ p.stock }} {{ p.unit }})
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-3" v-if="supplyForm.mode === 'IMPORT'">
+                <label class="form-label small fw-bold">Nhà vườn / Hợp tác xã giao hàng *</label>
+                <select v-model="supplyForm.supplier" class="form-select" required>
+                  <option v-for="s in suppliers" :key="s.id" :value="s.name">{{ s.name }} ({{ s.location }})</option>
+                </select>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-bold">{{ supplyForm.mode === 'IMPORT' ? 'Số lượng nhập thêm *' : 'Số lượng xuất hủy *' }}</label>
+                  <input type="number" v-model.number="supplyForm.quantity" class="form-control fw-bold" min="1" required>
+                </div>
+                <div class="col-6" v-if="supplyForm.mode === 'IMPORT'">
+                  <label class="form-label small fw-bold">Đơn giá vốn nhập (VNĐ) *</label>
+                  <input type="number" v-model.number="supplyForm.importCost" class="form-control" min="1000" step="500" required>
+                </div>
+              </div>
+
+              <div v-if="supplyForm.mode === 'IMPORT'" class="alert alert-success py-2 small mb-3">
+                Tổng giá trị lô nhập: <strong>{{ formatPrice((supplyForm.quantity || 0) * (supplyForm.importCost || 0)) }}</strong>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Ghi chú chứng từ *</label>
+                <input type="text" v-model="supplyForm.note" class="form-control" placeholder="VD: Lô thu hoạch sáng sớm / Hư hỏng do vận chuyển..." required>
+              </div>
+
+              <button type="submit" class="btn w-100 py-2 fw-bold" :class="supplyForm.mode === 'IMPORT' ? 'btn-success' : 'btn-danger'">
+                <i class="fa-solid fa-check-double me-1"></i>{{ supplyForm.mode === 'IMPORT' ? 'Xác nhận Nhập Kho' : 'Xác nhận Trừ Kho Hao Hụt' }}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="printModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0" v-if="printData">
+          <div class="modal-header bg-dark text-white d-print-none">
+            <h6 class="modal-title fw-bold"><i class="fa-solid fa-print me-2"></i>Xem trước Biểu mẫu Chứng từ</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4" id="printableArea">
+            <div class="text-center border-bottom pb-3 mb-3">
+              <h5 class="fw-bold text-success mb-0">CỬA HÀNG NÔNG SẢN SẠCH HƯƠNG SẮC ĐẤT PHÙ SA</h5>
+              <small class="text-muted">Khu vực ĐBSCL - Vĩnh Long & Trà Vinh | Hotline: 0348 914 077</small>
+              <h4 class="fw-bold text-dark mt-3 mb-1">{{ printData.title }}</h4>
+              <small class="text-secondary">Mã chứng từ: <strong>#{{ printData.code }}</strong> — Ngày lập: {{ printData.date }}</small>
+            </div>
+
+            <div class="mb-3 small">
+              <div><strong>Đối tác / Khách hàng:</strong> {{ printData.partner }}</div>
+              <div v-if="printData.address"><strong>Địa chỉ:</strong> {{ printData.address }}</div>
+              <div><strong>Ghi chú:</strong> {{ printData.note || 'Không có' }}</div>
+            </div>
+
+            <table class="table table-bordered small align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>STT</th>
+                  <th>Tên nông sản</th>
+                  <th>Đơn vị</th>
+                  <th>Số lượng</th>
+                  <th class="text-end">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in printData.rows" :key="idx">
+                  <td>{{ idx + 1 }}</td>
+                  <td class="fw-bold">{{ row.name }}</td>
+                  <td>{{ row.unit }}</td>
+                  <td>{{ row.qty }}</td>
+                  <td class="text-end fw-semibold">{{ formatPrice(row.total) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="4" class="text-end">Tổng cộng giá trị:</th>
+                  <th class="text-end text-danger fs-6">{{ formatPrice(printData.grandTotal) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div class="row text-center small mt-4 pt-2">
+              <div class="col-6">
+                <strong>Người giao / Khách hàng</strong>
+                <div class="text-muted fst-italic">(Ký và ghi rõ họ tên)</div>
+              </div>
+              <div class="col-6">
+                <strong>Đại diện Cửa hàng</strong>
+                <div class="text-muted fst-italic">(Kiên Khánh Duy)</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer d-print-none">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+            <button type="button" class="btn btn-success btn-sm fw-bold" onclick="window.print()">
+              <i class="fa-solid fa-print me-1"></i>In Chứng Từ Ngay
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header border-bottom-0 pb-0">
+            <ul class="nav nav-pills w-100 nav-fill bg-light p-1 rounded-3">
+              <li class="nav-item">
+                <button class="nav-link fw-bold" :class="{ active: authTab === 'login' }" @click="openAuthModal('login')">
+                  <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link fw-bold" :class="{ active: authTab === 'register' }" @click="openAuthModal('register')">
+                  <i class="fa-solid fa-user-plus me-1"></i>Đăng ký tài khoản
+                </button>
+              </li>
+            </ul>
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body p-4">
+            <div v-if="authError" class="alert alert-danger py-2 small mb-3">
+              <i class="fa-solid fa-circle-exclamation me-1"></i>{{ authError }}
+            </div>
+
+            <form v-if="authTab === 'login'" @submit.prevent="handleLogin">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Tên đăng nhập hoặc Email *</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fa-solid fa-user text-muted"></i></span>
+                  <input type="text" v-model="loginForm.username" class="form-control" placeholder="Nhập tên đăng nhập hoặc email..." required>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Mật khẩu *</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fa-solid fa-lock text-muted"></i></span>
+                  <input :type="showPassword ? 'text' : 'password'" v-model="loginForm.password" class="form-control" placeholder="Nhập mật khẩu..." required>
+                  <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword">
+                    <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                <i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập vào Hệ thống
+              </button>
+            </form>
+
+            <form v-else @submit.prevent="handleRegister">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Họ và tên đầy đủ *</label>
+                <input type="text" v-model="registerForm.name" class="form-control" placeholder="Ví dụ: Nguyễn Minh Khôi" required>
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Tên đăng nhập *</label>
+                  <input type="text" v-model="registerForm.username" class="form-control" placeholder="Viết liền không dấu" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Số điện thoại (10 số) *</label>
+                  <input type="tel" v-model="registerForm.phone" class="form-control" placeholder="09xxxxxxxx" required>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Email liên hệ</label>
+                <input type="email" v-model="registerForm.email" class="form-control" placeholder="example@gmail.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Địa chỉ nhận hàng mặc định *</label>
+                <input type="text" v-model="registerForm.address" class="form-control" placeholder="Số nhà, đường, phường/xã, tỉnh..." required>
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Mật khẩu *</label>
+                  <input :type="showPassword ? 'text' : 'password'" v-model="registerForm.password" class="form-control" placeholder="Từ 6 ký tự" minlength="6" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Xác nhận mật khẩu *</label>
+                  <input :type="showPassword ? 'text' : 'password'" v-model="registerForm.confirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                <i class="fa-solid fa-user-check me-2"></i>Hoàn tất Đăng ký
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow" v-if="currentUser">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold"><i class="fa-solid fa-id-card me-2"></i>Hồ sơ cá nhân</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form @submit.prevent="saveProfile">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Tên tài khoản</label>
+                <input type="text" class="form-control bg-light" :value="'@' + currentUser.username" disabled>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Họ và tên *</label>
+                <input type="text" v-model="profileForm.name" class="form-control" required>
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Số điện thoại *</label>
+                  <input type="tel" v-model="profileForm.phone" class="form-control" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-bold">Email</label>
+                  <input type="email" v-model="profileForm.email" class="form-control">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Địa chỉ nhận hàng mặc định</label>
+                <input type="text" v-model="profileForm.address" class="form-control">
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Đổi mật khẩu mới (Để trống nếu giữ nguyên)</label>
+                <input type="password" v-model="profileForm.newPassword" class="form-control" placeholder="Tối thiểu 6 ký tự...">
+              </div>
+              <button type="submit" class="btn btn-success w-100 fw-bold">Cập nhật thông tin</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="myOrdersModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold"><i class="fa-solid fa-box-archive me-2"></i>Theo dõi Đơn hàng & Mua lại</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <div v-if="userOrders.length === 0" class="text-center text-muted py-5 bg-white rounded-4">
+              <i class="fa-solid fa-box-open fs-1 mb-3 d-block opacity-50"></i>
+              <p class="mb-0">Bạn chưa có đơn đặt hàng nào.</p>
+            </div>
+            <div v-else class="d-flex flex-column gap-3">
+              <div v-for="order in userOrders" :key="order.id" class="border rounded-4 p-3 bg-white shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-2 mb-3 gap-2">
+                  <div>
+                    <span class="fw-bold text-success fs-6">#{{ order.id }}</span>
+                    <small class="text-muted ms-2"><i class="fa-regular fa-clock me-1"></i>{{ order.createdAt }}</small>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge px-3 py-1" :class="getOrderStatusClass(order.status)">{{ order.status }}</span>
+                    <button class="btn btn-sm btn-success py-0 fw-semibold" @click="reorderOldOrder(order)" title="Thêm toàn bộ sản phẩm của đơn này vào giỏ">
+                      <i class="fa-solid fa-rotate-right me-1"></i>Mua lại đơn này
+                    </button>
+                    <button v-if="order.status === 'Chờ xử lý'" class="btn btn-sm btn-outline-danger py-0" @click="cancelOrderByCustomer(order)">
+                      Hủy đơn
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="order.status !== 'Đã hủy'" class="order-progress d-flex justify-content-between text-center small mb-3 px-2">
+                  <div class="step" :class="{ active: getOrderStep(order.status) >= 1 }">
+                    <div class="step-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                    <div>Chờ xử lý</div>
+                  </div>
+                  <div class="step" :class="{ active: getOrderStep(order.status) >= 2 }">
+                    <div class="step-icon"><i class="fa-solid fa-box-open"></i></div>
+                    <div>Đóng gói</div>
+                  </div>
+                  <div class="step" :class="{ active: getOrderStep(order.status) >= 3 }">
+                    <div class="step-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                    <div>Đang giao</div>
+                  </div>
+                  <div class="step" :class="{ active: getOrderStep(order.status) >= 4 }">
+                    <div class="step-icon"><i class="fa-solid fa-house-circle-check"></i></div>
+                    <div>Hoàn thành</div>
+                  </div>
+                </div>
+
+                <div class="small text-secondary mb-2">
+                  <div v-for="it in order.items" :key="it.id" class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                    <span><strong>{{ it.name }}</strong> x {{ it.quantity }} {{ it.unit }}</span>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="fw-semibold">{{ formatPrice(it.price * it.quantity) }}</span>
+                      <button class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size: 11px;" @click="openReviewFromOrder(it.id)">
+                        <i class="fa-solid fa-star me-1"></i>Đánh giá
+                      </button>
+                    </div>
+                  </div>
+                  <div v-if="order.freeGift" class="text-success fw-semibold mt-1">
+                    <i class="fa-solid fa-gift me-1"></i>Quà tặng kèm: {{ order.freeGift }}
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2">
+                  <small class="text-muted"><i class="fa-solid fa-location-dot text-success me-1"></i>Giao đến: {{ order.customer.address }}</small>
+                  <span class="fw-bold text-danger fs-6">Tổng: {{ formatPrice(order.total) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+      <div id="liveToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body fw-semibold">
+            <i class="fa-solid fa-circle-check me-2"></i>{{ toastMessage }}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="bg-white border-top py-4 mt-5 d-print-none">
+      <div class="container text-center text-muted small">
+        <p class="mb-1 fw-semibold text-success">&copy; 2026 Hương Sắc Đất Phù Sa - Hệ Thống Thương Mại & Quản Lý Cung Ứng Nông Sản Sạch</p>
+        <p class="mb-0">Đồ án cơ sở ngành Công nghệ thông tin - Thực hiện bởi: <strong>Kiên Khánh Duy</strong> (MSSV: 110124043 - Lớp: DA24TTB)</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
